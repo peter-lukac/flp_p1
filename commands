@@ -1,0 +1,10 @@
+System.Directory.getCurrentDirectory
+:t  // type of the function
+
+-- (satisfy (\char -> char >= 'A' && char <= 'Z'))
+
+play :: String -> IO ()
+play inp = case parse oneParser "" inp of
+             { Left err -> print err
+             ; Right ans -> print ans
+             }
