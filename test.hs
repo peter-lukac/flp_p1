@@ -12,6 +12,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 import Data.List
+import System.Exit (die)
 
 data Rule = Rule
     { leftSide :: String
@@ -33,74 +34,62 @@ instance Show PLG where
 
 data RuleAndNonTs = RuleAndNonTs [Rule] [String]
 
+{-
+validate :: PLG -> Either String PLG
+validate plg@PLG{..} = if ok then Right plg else Left "invalid PLG"
+    where
+        ok = elem start nonTerminals
+            && all ((`elem` nonTerminals) . leftSide) rules
+            && all ((all (`elem` '#':terminals)) . rightSideTerminals) rules
+            && all ((`elem` "":nonTerminals) . rightSideNonTerminal) rules
 
-splitRule :: Rule -> [String] -> [Rule]
+play :: IO ()
+play = do
+    let plg = PLG ["A", "B"] ['a', 'b'] "A" [Rule "A" "ab" "B", Rule "B" "b" "", Rule "B" "#" ""]
+    --let x = case validate plg of { Left err -> error err; Right y -> y }
+    case validate plg of
+        Left e -> do
+            error e
+        _ -> do
+            return ()
+    putStr $ show plg
+-}
+
+{-
+splitRule :: Rule -> [String] -> RuleAndNonTs
 -- when rule is A->xB then return it
-splitRule (Rule a (b:[]) c) nonTs = [Rule a [b] c]
+splitRule (Rule a (b:[]) c) nonTs = RuleAndNonTs [Rule a [b] c] nonTs
 -- when rule is A->x..xB then split it
-splitRule (Rule a (b:bs) c) nonTs = (Rule a [b] newNonT):splitRule (Rule newNonT bs c) (newNonT:nonTs)
-    where 
+splitRule (Rule a (b:bs) c) nonTs = RuleAndNonTs ((Rule a [b] newNonT):newRules) newNonTs
+    where
         newNonT = (head a):(show $ length $ filter (\x -> x == (head a)) (map head nonTs))
+        RuleAndNonTs newRules newNonTs = splitRule (Rule newNonT bs c) (concat [nonTs, [newNonT]])
 
 
-transformRules :: [Rule] -> [Rule]
--- splitting last rule
-transformRules (rule:[]) = splitRule rule [""]
+transformRules :: [Rule] -> [String] -> RuleAndNonTs
+-- transform last rule
+transformRules (rule:[]) nonTs = splitRule rule nonTs
 -- splitting all rules
-transformRules (rule:rules) = do
-    -- split rule with and get new non terminals
-    let x = splitRule rule ["A", "B", "C"]
-    let y = transformRules rules
-    concat [x, y]
-
-
-testP :: Rule -> [String] -> RuleAndNonTs
--- 
-testP (Rule a (b:[]) c) nonTs = RuleAndNonTs [Rule a [b] c] nonTs
--- 
-testP (Rule a (b:bs) c) nonTs = RuleAndNonTs ((Rule a [b] newNonT):newRules) newNonTs
+transformRules (rule:rules) nonTs = RuleAndNonTs (concat [rules1, rules2]) nonTs2
     where
-        newNonT = (head a):(show $ length $ filter (\x -> x == (head a)) (map head nonTs))
-        RuleAndNonTs newRules newNonTs = testP (Rule newNonT bs c) (newNonT:nonTs)
+        RuleAndNonTs rules1 nonTs1 = splitRule rule nonTs
+        RuleAndNonTs rules2 nonTs2 = transformRules rules nonTs1
 
 
-testP2 :: [Rule] -> [String] -> RuleAndNonTs
---
-testP2 (rule:[]) nonTs = testP rule nonTs
---
-testP2 (rule:rules) nonTs = RuleAndNonTs (concat [rules1, rules2]) nonTs2
-    where
-        RuleAndNonTs rules1 nonTs1 = testP rule nonTs
-        RuleAndNonTs rules2 nonTs2 = testP2 rules nonTs1
-
-
-playP :: IO ()
-playP = do
+play :: IO ()
+play = do
     let n = ["A", "B", "C"]
     let rule1 = Rule "A" "a" "B"
     let rule2 = Rule "B" "bcd" "C"
     let rule3 = Rule "B" "ef" ""
     let rule4 = Rule "B" "#" ""
     let rules = [rule1, rule2, rule3, rule4]
-    let RuleAndNonTs a b = testP2 rules n
+    let RuleAndNonTs a b = transformRules rules n
     --let RuleAndNonTs a b = testP rule3 n
     print b
     print ""
     putStr $ unlines $ map show a
-
-
-play :: IO ()
-play = do
-    let rule1 = Rule "A" "a" "B"
-    let rule2 = Rule "B" "bcd" "C"
-    let rule3 = Rule "B" "ef" ""
-    let rule4 = Rule "B" "#" ""
-    let rules1 = [rule1, rule2, rule3, rule4]
-    putStr $ unlines $ map show rules1
-    let rules2 = transformRules rules1
-    print ""
-    putStr $ unlines $ map show rules2
-
+-}
 
 {-
 adjustRule :: Rule -> Rule

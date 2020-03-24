@@ -10,39 +10,15 @@ import Data.List
 import Control.Arrow (left)
 import Control.Monad ((<=<))
 import Data.Ord
-import Text.Parsec (Parsec, ParseError, parse,
-        newline, alphaNum, string, char, satisfy, sepBy1, endBy, many1, upper, lower, endOfLine, sepBy, count, skipMany, try, lookAhead, many, choice, between, option)
+import Text.Parsec (parse, newline, string, char, sepBy1, endBy, many1, upper, lower, sepBy, count, choice)
 import Text.Parsec.String (Parser)
+import PLG2NKA_Data (PLG(..), Rule(..))
 
 -- Typ výsledku nebo text případné chyby
 type Err = Either String
 
-data Rule = Rule
-    { leftSide :: String
-    , rightSideTerminals :: [Char]
-    , rightSideNonTerminal :: String
-    } deriving (Eq)
-instance Show Rule where
-    show (Rule l r1 r2) = l ++ "->" ++ r1 ++ r2
-
-data PLG = PLG
-    { nonTerminals :: [String]
-    , terminals :: [Char]
-    , start :: String
-    , rules :: [Rule]
-    } deriving (Eq)
-
-instance Show PLG where
-    show (PLG n t s r) = unlines $ [intercalate "," n, intersperse ',' t, s] ++ map show r
-
-
-
-
-testRule :: String -> IO ()
-testRule inp = case parse parseRule "" inp of
-             { Left err -> print err
-             ; Right ans -> print ans
-             }
+testPLG :: String -> Either String PLG
+testPLG = validate . adjustPLG <=< left show . parse parsePLG ""
 
 getPLG :: String -> PLG
 getPLG input = case parse parsePLG "" input of
@@ -50,17 +26,6 @@ getPLG input = case parse parsePLG "" input of
             ;   Right ans -> ans
             }
 
-
-
-getRule :: String -> Rule
-getRule input = case parse parseRule "" input of
-            {   Left err -> error "lul"
-            ;   Right ans -> ans
-            }
-
-
---parsePLG :: String -> Err PLG
---parsePLG = validate <=< left show . parse plgParser ""
 
 -- main parser function
 parsePLG :: Parser PLG
@@ -75,8 +40,7 @@ ruleList = endBy parseRule newline
 
 -- single parseRule parsing
 parseRule :: Parser Rule
-parseRule = Rule <$> count 1 upper <* rightArrow <*> choice [string "#", rightSide] <*> string ""
---parseRule = Rule <$> count 1 upper <* rightArrow <*> ruleTerminalOrHash <*> ruleNonTerminal
+parseRule = Rule <$> count 1 upper <* string "->" <*> choice [string "#", rightSide] <*> string ""
 
 
 -- parses non-empty right side of the rule
@@ -91,26 +55,27 @@ nonTerminalList = sepBy1 (count 1 upper) comma
 terminalList :: Parser [Char]
 terminalList = sepBy lower comma
 
-
-ruleTerminalOrHash :: Parser [Char]
-ruleTerminalOrHash = choice [string "#", many1 lower]
-
-ruleNonTerminal :: Parser String
-ruleNonTerminal = option "" (count 1 upper)
-
-ruleTerminal :: Parser [Char]
-ruleTerminal = many (satisfy (\char -> (char >= 'a' && char <= 'z') || char == '#'))
-
--- "->" symbol parser
-rightArrow :: Parser String
-rightArrow = string "->"
-
 -- "," symbol parser
 comma :: Parser Char
 comma = char ','
 
 
 validate :: PLG -> Err PLG
-validate plg@PLG{..} = if allOK then Right plg else Left "invalid PLG"
-  where
-    allOK = True
+validate plg@PLG{..} = if ok then Right plg else Left "invalid PLG"
+    where
+        ok = elem start nonTerminals
+            && all ((`elem` nonTerminals) . leftSide) rules
+            && all ((all (`elem` '#':terminals)) . rightSideTerminals) rules
+            && all ((`elem` "":nonTerminals) . rightSideNonTerminal) rules
+
+
+adjustPLG :: PLG -> PLG
+adjustPLG plg@PLG{..} = PLG nonTerminals terminals start adjustedRules
+    where
+        adjustedRules = map adjustRule rules
+
+adjustRule :: Rule -> Rule
+adjustRule rule@Rule{..} = Rule leftSide rightSide1 rightSide2
+    where
+        rightSide1 = filter (\x -> (x >= 'a' && x <= 'z') || x == '#') rightSideTerminals
+        rightSide2 = filter (\x -> x >= 'A' && x <= 'Z') rightSideTerminals
