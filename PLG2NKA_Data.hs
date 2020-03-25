@@ -22,3 +22,21 @@ data PLG = PLG
     } deriving (Eq)
 instance Show PLG where
     show (PLG n t s r) = unlines $ [intercalate "," n, intersperse ',' t, s] ++ map show r
+
+
+data Transition = Transition
+    { fromState :: Int
+    , byInput :: Char
+    , toState :: Int
+    } deriving (Eq)
+instance Show Transition where
+    show (Transition f b t) = (show f) ++ "," ++ [b] ++ "," ++ (show t)
+
+data NKA = NKA
+    { states :: [Int]
+    , startState :: Int
+    , endStates :: [Int]
+    , transitions :: [Transition]
+    } deriving (Eq)
+instance Show NKA where
+    show (NKA s s0 e t) = unlines $ [intercalate "," (map show s), (show s0), intercalate "," (map show e)] ++ map show t

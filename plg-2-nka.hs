@@ -6,8 +6,8 @@ import Data.List
 import Data.Ord
 import System.Exit (die)
 
-import PLG2NKA_Data (PLG(..), Rule(..))
-import PLGParser (getPLG, adjustPLG, testPLG)
+import PLG2NKA_Data (PLG(..), Rule(..), Transition(..), NKA(..))
+import PLGParser (getPLG, adjustPLG)
 
 data RuleAndNonTs = RuleAndNonTs [Rule] [String]
 
@@ -16,24 +16,34 @@ main = do
     args <- getArgs
     case args of
         ["-i"] -> do
-            putStrLn "-i, change da world"
+            inputData <- getContents
+            case getPLG inputData of {Left err -> error err; Right plg -> putStr $ show plg}
         ["-i", filename] -> do
             inputData <- readFile filename
+            case getPLG inputData of {Left err -> error err; Right plg -> putStr $ show plg}
             --let plg = adjustPLG $ getPLG inputData
             --putStr $ show plg
-            case testPLG inputData of {Left err -> error err; Right plg -> putStr $ show plg}
         ["-1"] -> do
-            putStrLn "-1, change da world"
-        ["-1", filename] -> do
-            inputData <- readFile filename
-            case testPLG inputData of
+            inputData <- getContents
+            case getPLG inputData of
                 Left err -> error err
                 Right plg -> putStr $ show $ transformPLG plg
+        ["-1", filename] -> do
+            inputData <- readFile filename
+            case getPLG inputData of
+                Left err -> error err
+                Right plg -> putStr $ show $ transformPLG plg
+        ["-2", filename] -> do
+            inputData <- readFile filename
+            case getPLG inputData of
+                Left err -> error err
+                Right plg -> putStr $ show $ makeNKA $ transformPLG plg
+        _   -> putStrLn "Usage: plg-2-nka -i|-1|-2 [input_file]"
 
 
 splitRule :: Rule -> [String] -> RuleAndNonTs
 -- if rule is A-># then return it
-splitRule (Rule a ['#'] c) nonTs = RuleAndNonTs [Rule a ['#'] c] nonTs
+splitRule (Rule a "#" "") nonTs = RuleAndNonTs [Rule a "#" ""] nonTs
 -- if rule is A->x then add epsilon rule
 splitRule (Rule a (b:[]) "") nonTs = RuleAndNonTs [Rule a [b] newNonT, Rule newNonT ['#'] ""] (concat [nonTs, [newNonT]])
     where
@@ -60,3 +70,18 @@ transformPLG :: PLG -> PLG
 transformPLG plg@PLG{..} = PLG newNonTs terminals start newRules
     where
         RuleAndNonTs newRules newNonTs = transformRules rules nonTerminals
+
+
+rule2Transition :: [String] -> Rule -> Transition
+rule2Transition nonTs (Rule a (b:[]) c) = Transition s1 b s2
+    where
+        s1 = case elemIndex a nonTs of { Just x -> x; Nothing -> 0 }
+        s2 = case elemIndex c nonTs of { Just x -> x; Nothing -> 0 }
+
+makeNKA :: PLG -> NKA
+makeNKA plg@PLG{..} = NKA states startState endStates transitions
+    where
+        states = [1,2]
+        startState = 1
+        endStates = [1,2]
+        transitions = map (rule2Transition nonTerminals) (filter (\(Rule _ x _) -> x /= "#") rules)

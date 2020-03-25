@@ -17,15 +17,8 @@ import PLG2NKA_Data (PLG(..), Rule(..))
 -- Typ výsledku nebo text případné chyby
 type Err = Either String
 
-testPLG :: String -> Either String PLG
-testPLG = validate . adjustPLG <=< left show . parse parsePLG ""
-
-getPLG :: String -> PLG
-getPLG input = case parse parsePLG "" input of
-            {   Left err -> error $ show err
-            ;   Right ans -> ans
-            }
-
+getPLG :: String -> Either String PLG
+getPLG = validate . adjustPLG <=< left show . parse parsePLG ""
 
 -- main parser function
 parsePLG :: Parser PLG
