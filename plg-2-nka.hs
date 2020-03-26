@@ -21,8 +21,6 @@ main = do
         ["-i", filename] -> do
             inputData <- readFile filename
             case getPLG inputData of {Left err -> error err; Right plg -> putStr $ show plg}
-            --let plg = adjustPLG $ getPLG inputData
-            --putStr $ show plg
         ["-1"] -> do
             inputData <- getContents
             case getPLG inputData of
@@ -35,6 +33,11 @@ main = do
                 Right plg -> putStr $ show $ transformPLG plg
         ["-2", filename] -> do
             inputData <- readFile filename
+            case getPLG inputData of
+                Left err -> error err
+                Right plg -> putStr $ show $ makeNKA $ transformPLG plg
+        ["-2"] -> do
+            inputData <- getContents
             case getPLG inputData of
                 Left err -> error err
                 Right plg -> putStr $ show $ makeNKA $ transformPLG plg
@@ -72,16 +75,17 @@ transformPLG plg@PLG{..} = PLG newNonTs terminals start newRules
         RuleAndNonTs newRules newNonTs = transformRules rules nonTerminals
 
 
+certainIndex :: String -> [String] -> Int
+certainIndex e list = case elemIndex e list of { Just x -> x; Nothing -> 0 }
+
+
 rule2Transition :: [String] -> Rule -> Transition
-rule2Transition nonTs (Rule a (b:[]) c) = Transition s1 b s2
-    where
-        s1 = case elemIndex a nonTs of { Just x -> x; Nothing -> 0 }
-        s2 = case elemIndex c nonTs of { Just x -> x; Nothing -> 0 }
+rule2Transition nonTs (Rule a (b:[]) c) = Transition (certainIndex a nonTs) b (certainIndex c nonTs)
 
 makeNKA :: PLG -> NKA
 makeNKA plg@PLG{..} = NKA states startState endStates transitions
     where
-        states = [1,2]
-        startState = 1
-        endStates = [1,2]
+        states = [0..(length nonTerminals) - 1]
+        startState = certainIndex start nonTerminals
+        endStates = findIndices (`elem` (map (\(Rule x _ _) -> x) (filter (\(Rule _ x _) -> x == "#") rules))) nonTerminals
         transitions = map (rule2Transition nonTerminals) (filter (\(Rule _ x _) -> x /= "#") rules)
