@@ -8,7 +8,6 @@
 
 module Main(main) where
 
-import System.IO
 import System.Environment
 import Data.List
 
@@ -41,6 +40,7 @@ main = do
             case getPLG inputData of
                 Left err -> error err
                 Right plg -> putStr $ show $ makeNKA $ transformPLG plg
+        _ -> error "Usage: plg-2-nka -i|-1|-2 [input_file]"
 
 
 -- parsing arguments
@@ -80,6 +80,7 @@ splitRule (Rule a (b:bs) c) nonTs = RuleAndNonTs ((Rule a [b] newNonT):newRules)
     where
         newNonT = (head a):(show $ length $ filter (\x -> x == (head a)) (map head nonTs))
         RuleAndNonTs newRules newNonTs = splitRule (Rule newNonT bs c) (concat [nonTs, [newNonT]])
+splitRule (Rule _ [] _) _ = RuleAndNonTs [] []
 
 
 -- changes all rules into A->xB or A->#
@@ -91,11 +92,12 @@ transformRules (rule:rules) nonTs = RuleAndNonTs (concat [rules1, rules2]) nonTs
     where
         RuleAndNonTs rules1 nonTs1 = splitRule rule nonTs
         RuleAndNonTs rules2 nonTs2 = transformRules rules nonTs1
+transformRules [] _ = RuleAndNonTs [] []
 
 
 -- takes PLG and tranforms it into PLG with A->xB or A-># rules
 transformPLG :: PLG -> PLG
-transformPLG plg@PLG{..} = PLG newNonTs terminals start newRules
+transformPLG PLG{..} = PLG newNonTs terminals start newRules
     where
         RuleAndNonTs newRules newNonTs = transformRules rules nonTerminals
 
@@ -108,11 +110,13 @@ certainIndex e list = case elemIndex e list of { Just x -> x; Nothing -> 0 }
 -- convert PLG rule into NKA transition
 rule2Transition :: [String] -> Rule -> Transition
 rule2Transition nonTs (Rule a (b:[]) c) = Transition (certainIndex a nonTs)b(certainIndex c nonTs)
+rule2Transition _ (Rule _ [] _) = Transition 0 ' ' 0
+rule2Transition _ (Rule _ (_ : (_ : _)) _) = Transition 0 ' ' 0
 
 
 -- convert PLG to NKA
 makeNKA :: PLG -> NKA
-makeNKA plg@PLG{..} = NKA states startState endStates transitions
+makeNKA PLG{..} = NKA states startState endStates transitions
     where
         states = [0..(length nonTerminals) - 1]
         startState = certainIndex start nonTerminals

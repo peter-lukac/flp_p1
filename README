@@ -1,0 +1,9 @@
+autor: Peter Lukac
+login: xlukac11
+march 2020
+
+project 1 for FLP: a simple convertor from right linear grammar to finite automata
+
+compile: gmake
+
+Usage: plg-2-nka -i|-1|-2 [input_file]

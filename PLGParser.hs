@@ -8,7 +8,7 @@
 
 module PLGParser  where
 
-import Control.Applicative ((<$>), (<*>), (<$), (<*), (<|>))
+import Control.Applicative ((<$>), (<*>), (<*))
 import Data.List
 import Control.Arrow (left)
 import Control.Monad ((<=<))
