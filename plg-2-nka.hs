@@ -13,7 +13,7 @@ import System.Environment
 import Data.List
 
 import PLG2NKA_Data (PLG(..), Rule(..), Transition(..), NKA(..))
-import PLGParser (getPLG, adjustPLG)
+import PLGParser (getPLG)
 
 
 -- main function executes essential functions and prints output

@@ -8,6 +8,7 @@
 
 module PLGParser  where
 
+import Control.Applicative ((<$>), (<*>), (<$), (<*), (<|>))
 import Data.List
 import Control.Arrow (left)
 import Control.Monad ((<=<))
@@ -19,7 +20,7 @@ import PLG2NKA_Data (PLG(..), Rule(..))
 
 -- takes input string and returns parssed PLG or error string
 getPLG :: String -> Either String PLG
-getPLG = validate . adjustPLG <=< left show . parse parsePLG ""
+getPLG = validate <=< left show . parse parsePLG ""
 
 
 -- main parser function
@@ -37,12 +38,10 @@ ruleList = endBy parseRule newline
 
 -- single parseRule parsing
 parseRule :: Parser Rule
-parseRule = Rule <$> count 1 upper <* string "->" <*> choice [string "#", rightSide] <*> string ""
+parseRule = Rule <$> count 1 upper <* string "->"
+                    <*> choice [string "#", many1 lower]
+                    <*> choice [count 1 upper, string ""]
 
-
--- parses non-empty right side of the rule
-rightSide :: Parser String
-rightSide = many1 lower <> choice [count 1 upper, string ""]
 
 
 -- non-terminal symbols parsing
@@ -70,18 +69,4 @@ validate plg@PLG{..} = if ok then Right plg else Left "invalid PLG"
             && all ((`elem` "":nonTerminals) . rightSideNonTerminal) rules
             && all (\x -> length x == 1 ) (map (`elemIndices` nonTerminals) nonTerminals)
             && all (\x -> length x == 1 ) (map (`elemIndices` terminals) terminals)
-
-
--- readjusts the rules in the PLG
-adjustPLG :: PLG -> PLG
-adjustPLG plg@PLG{..} = PLG nonTerminals terminals start adjustedRules
-    where
-        adjustedRules = map adjustRule rules
-
-
--- readjust the right side of the rule
-adjustRule :: Rule -> Rule
-adjustRule rule@Rule{..} = Rule leftSide rightSide1 rightSide2
-    where
-        rightSide1 = filter (\x -> (x >= 'a' && x <= 'z') || x == '#') rightSideTerminals
-        rightSide2 = filter (\x -> x >= 'A' && x <= 'Z') rightSideTerminals
+            && all (\(Rule _ a b) -> (a=="#"&&b=="") || (a/="#") ) rules
