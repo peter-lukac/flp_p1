@@ -34,6 +34,12 @@ instance Show PLG where
 
 data RuleAndNonTs = RuleAndNonTs [Rule] [String]
 
+
+play = do
+    let ls = ["M", "N", "C", "M"]
+    print $ all (\x -> length x == 1 ) (map (`elemIndices` ls) ls)
+
+
 {-
 validate :: PLG -> Either String PLG
 validate plg@PLG{..} = if ok then Right plg else Left "invalid PLG"
